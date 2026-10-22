@@ -147,6 +147,7 @@ strong { font-weight: 600; }
 .toc { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 0.92rem; padding-top: 4px; }
 .toc a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
 .toc a:hover { border-bottom-color: var(--spark); }
+.status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; max-width: 72ch; }
 
 /* Decision ledger */
 .ledger { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
@@ -399,7 +400,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
 <div class="page">
 
 <header class="masthead">
-  <p class="eyebrow">Design proposal · October 22, 2026</p>
+  <p class="eyebrow">Design and build notes · October 22, 2026</p>
   <h1>Flint on M4 Max</h1>
   <p class="lede">Recursive released Flint on October 21, 2026: an open-weights coding model built to run on a laptop. This page proposes how to run it on your MacBook Pro: which engine serves it, which harness drives it, how the 64&nbsp;GB gets spent, and what to check before you rely on it.</p>
   <ul class="facts" aria-label="Flint at a glance">
@@ -409,12 +410,14 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
     <li>always reasons</li>
     <li>Apache 2.0</li>
   </ul>
+  <p class="status"><span class="chip">Built</span> <span>rec refused this M4 Max, so Ollama serves Flint. Pi passes Recursive's tool-cycle check in 8 seconds and generates 140 tokens per second on short prompts. The setup is automated in <a href="https://github.com/timothy/flint">timothy/flint</a>.</span></p>
   <nav class="toc" aria-label="Sections">
     <a href="#architecture">Architecture</a>
     <a href="#turn-cost">Turn cost</a>
     <a href="#harness">Harness</a>
     <a href="#memory">Memory</a>
     <a href="#configuration">Configuration</a>
+    <a href="#measured">Measured</a>
     <a href="#build-plan">Build plan</a>
     <a href="#risks">Risks</a>
     <a href="#sources">Sources</a>
@@ -425,7 +428,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
   <div class="ledger-row">
     <p class="k">Engine</p>
     <p class="v">Ollama, <code>flint:40b-a2b-qat-int4</code></p>
-    <p class="why">Recursive's faster <code>rec</code> engine doesn't list the M4 Max as supported. One <code>rec doctor</code> run tells you; if it passes, use rec instead.</p>
+    <p class="why"><code>rec doctor</code> refused this M4 Max, so Ollama serves Flint on its MLX runner. On a Mac that rec supports, use rec instead.</p>
   </div>
   <div class="ledger-row">
     <p class="k">Harness</p>
@@ -451,7 +454,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
   </div>
   <figure class="fig">
     <div class="fig-scroll">
-      <svg class="diagram d-wide" viewBox="0 0 1100 600" role="img" aria-label="Architecture. You prompt the Pi harness. Pi sends the whole conversation over loopback to a local model server: rec on port 11500 if rec doctor passes, otherwise Ollama on port 11434, the planned path. The server streams reasoning and tool calls back. Pi runs the tools in a git worktree and returns the results with the next request. The server runs Flint from unified memory on the M4 Max GPU. Only an optional hand-off of hard tasks to Claude Code leaves the Mac.">
+      <svg class="diagram d-wide" viewBox="0 0 1100 600" role="img" aria-label="Architecture. You prompt the Pi harness. Pi sends the whole conversation over loopback to a local model server: Ollama on port 11434, the engine in use, or rec on port 11500, which refused this M4 Max. The server streams reasoning and tool calls back. Pi runs the tools in a git worktree and returns the results with the next request. The server runs Flint from unified memory on the M4 Max GPU. Only an optional hand-off of hard tasks to Claude Code leaves the Mac.">
         <defs>
           <marker id="ah-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
           <marker id="ah-spark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path class="ah-spark" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -485,12 +488,12 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
         <rect class="opt" x="674" y="252" width="152" height="68" rx="8"/>
         <text class="t-opt" x="750" y="275" text-anchor="middle">rec</text>
         <text class="t-mono" x="750" y="293" text-anchor="middle">:11500 · model flint</text>
-        <text class="t-label" x="750" y="311" text-anchor="middle">if rec doctor passes</text>
+        <text class="t-label" x="750" y="311" text-anchor="middle">refused on M4 Max</text>
         <text class="t-label" x="750" y="338" text-anchor="middle">or</text>
         <rect class="opt opt-spark" x="674" y="348" width="152" height="74" rx="8"/>
         <text class="t-opt" x="750" y="371" text-anchor="middle">Ollama</text>
         <text class="t-mono" x="750" y="389" text-anchor="middle">:11434 · qat-int4 tag</text>
-        <text class="t-label t-spark" x="750" y="408" text-anchor="middle">planned on M4 Max</text>
+        <text class="t-label t-spark" x="750" y="408" text-anchor="middle">in use on this Mac</text>
 
         <rect class="box" x="660" y="472" width="180" height="100" rx="10"/>
         <text class="t-title" x="750" y="498" text-anchor="middle">Unified memory</text>
@@ -528,7 +531,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
         <text class="t-label t-steel" x="691" y="64" text-anchor="middle">optional hand-off of hard tasks</text>
       </svg>
     </div>
-    <figcaption>Pi runs the agent loop. It sends the whole conversation to a model server on this Mac, gets reasoning and tool calls back as a stream, runs those tools in your worktree, and sends the results with the next request. Amber marks the planned path. Only the dashed hand-off to Claude leaves the machine.</figcaption>
+    <figcaption>Pi runs the agent loop. It sends the whole conversation to a model server on this Mac, gets reasoning and tool calls back as a stream, runs those tools in your worktree, and sends the results with the next request. Amber marks the path in use. Only the dashed hand-off to Claude leaves the machine.</figcaption>
   </figure>
   <div class="notes">
     <div>
@@ -686,7 +689,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
         <tr><th scope="row">Disk</th><td class="num">110 GB free of 926 GB</td><td>Room for one engine's copy of the weights (23–30 GB) at a time.</td></tr>
         <tr><th scope="row">macOS</th><td>26.7.1</td><td class="muted">No version-specific notes in Recursive's docs.</td></tr>
         <tr><th scope="row">Toolchain</th><td>Homebrew 7.0, Node 24.18, Python 3.12 with uv, Xcode, Docker with Colima, Claude Code</td><td>Pi needs Node 22.19+ and Python 3; both are present.</td></tr>
-        <tr><th scope="row">Not installed</th><td>rec, Ollama, llama.cpp, Pi, OpenCode</td><td class="muted">Covered in the build plan.</td></tr>
+        <tr><th scope="row">Added by the build</th><td>Ollama 0.40.8, Pi 1.4.0</td><td class="muted">rec refused this Mac; llama.cpp and OpenCode aren't installed.</td></tr>
       </tbody>
     </table>
   </div>
@@ -725,7 +728,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
         <text class="t-label" x="940" y="171" text-anchor="end">64 GiB</text>
       </svg>
     </div>
-    <figcaption>The planned path at a 131,072-token window, drawn to scale in GiB. Flint needs about 26 GiB. The macOS and apps share is a typical developer load, not a measurement, and the buffer figure is an estimate. The GPU limit on this Mac is the system default (<code>iogpu.wired_limit_mb</code> is 0), which allows about 48 GiB, so no override is needed.</figcaption>
+    <figcaption>The planned path at a 131,072-token window, drawn to scale in GiB. Flint needs about 26 GiB. The macOS and apps share is a typical developer load, not a measurement, and the buffer figure is an estimate. The GPU limit on this Mac is the system default (<code>iogpu.wired_limit_mb</code> is 0), which allows about 48 GiB, so no override is needed. After an 84,039-token prompt, Ollama reported 28 GB in use.</figcaption>
   </figure>
   <div class="table-wrap narrow">
     <table>
@@ -780,6 +783,40 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
   </div>
 </section>
 
+<section id="measured" class="block">
+  <div class="block-head">
+    <h2>Measured on this Mac</h2>
+    <p class="prose">October 22, 2026, with Ollama 0.40.8 on its MLX runner, <code>flint:40b-a2b-qat-int4</code> and Pi 1.4.0. Each prompt was new to the cache, and each reply was capped at 256 tokens.</p>
+  </div>
+  <div class="table-wrap narrow">
+    <table>
+      <thead>
+        <tr><th scope="col">Prompt tokens</th><th scope="col">Prefill tok/s</th><th scope="col">Generate tok/s</th><th scope="col">Wall time</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">840</td><td class="num">1,864</td><td class="num">139.8</td><td class="num">2.4 s</td></tr>
+        <tr><td class="num">6,439</td><td class="num">1,746</td><td class="num">130.5</td><td class="num">5.7 s</td></tr>
+        <tr><td class="num">26,242</td><td class="num">1,189</td><td class="num">114.0</td><td class="num">24.4 s</td></tr>
+        <tr><td class="num">84,039</td><td class="num">662</td><td class="num">62.3</td><td class="num">131.3 s</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="notes">
+    <div>
+      <h3>Faster than the M4 Pro figure</h3>
+      <p>On short prompts, generation beats the 125+ tok/s Recursive reports for rec on an M4 Pro. Past 80K tokens it halves, and reading a session that long from scratch takes about two minutes.</p>
+    </div>
+    <div>
+      <h3>The cache does its job</h3>
+      <p>Pi's prompt is about 1,460 tokens. In the tool-cycle run, turns 2 to 4 reused it from the KV cache and processed only 6 to 128 new tokens each.</p>
+    </div>
+    <div>
+      <h3>The tool cycle passes</h3>
+      <p><code>task smoke</code> passed in 8 seconds using Pi's read, write and bash tools. Memory in use peaked at 28 GB.</p>
+    </div>
+  </div>
+</section>
+
 <section id="build-plan" class="block">
   <div class="block-head">
     <h2>Build plan</h2>
@@ -800,7 +837,7 @@ details.alt[open] > summary { border-bottom: 1px solid var(--line); }
           <pre id="c2"><code>cd ~/apps/your-repo
 rec launch pi</code></pre>
         </div>
-        <p class="done"><strong>Done when</strong> <code>rec doctor</code> has passed or refused. If it refused, delete <code>~/.local/share/rec</code> if the folder was left behind, and go to step 2.</p>
+        <p class="done"><strong>Done when</strong> <code>rec doctor</code> has passed or refused. On this Mac it refused. If it refuses, delete <code>~/.local/share/rec</code> if the folder was left behind, and go to step 2.</p>
       </div>
     </li>
     <li>
@@ -826,7 +863,7 @@ ollama pull flint:40b-a2b-qat-int4</code></pre>
 cd ~/apps/your-repo
 ollama launch pi</code></pre>
         </div>
-        <p>Pick <code>flint:40b-a2b-qat-int4</code> when asked; Ollama writes Pi's provider settings for you. In a second terminal, <code>ollama ps</code> should show the model on 100% GPU with a 131072 context.</p>
+        <p>Pick <code>flint:40b-a2b-qat-int4</code> when asked; Ollama writes Pi's provider settings for you. It also installs a web-search extension that calls Ollama's cloud service; remove it with <code>pi remove npm:@ollama/pi-web-search</code>. The repo's <code>task pi:config</code> does that and raises Pi's output budget from 16,384 to 32,768 tokens. In a second terminal, <code>ollama ps</code> should show the model on 100% GPU with a 131072 context.</p>
         <p class="done"><strong>Done when</strong> Pi answers “What is 19 + 23?” with 42.</p>
       </div>
     </li>
@@ -914,11 +951,14 @@ llama-server --version</code></pre>
     <h2>Risks and open questions</h2>
   </div>
   <ul class="risks">
-    <li><span class="chip">Engine</span><p><strong>rec may refuse this Mac.</strong> The rec page lists M4 Pro, M5 Pro and M5 Max, while the Mac recipe and troubleshooting pages say “M4 or M5 Pro or Max”. One <code>rec doctor</code> run settles it.</p></li>
+    <li><span class="chip">Engine</span><p><strong>Settled: rec refuses this Mac.</strong> rec 0.1.0 reports “Flint requires an Apple M4 Pro, M5 Pro or M5 Max; detected Apple M4 Max”. Check again when Recursive ships a new rec release.</p></li>
     <li><span class="chip">Maturity</span><p><strong>Everything here is days old.</strong> Flint shipped October 21, 2026, and llama.cpp support merged the same day with a stopgap its author says costs 10–30% in speed. Once a setup works, pin the versions.</p></li>
-    <li><span class="chip">Speed</span><p><strong>No M4 Max numbers exist yet.</strong> Recursive reports rec above 125 tok/s averaged over a 128k-token session on an M4 Pro, and 1.4–2.6× faster than llama.cpp across 1K–252K prompts. Your own measurements are the source of truth.</p></li>
+    <li><span class="chip">Speed</span><p><strong>Long sessions slow down.</strong> Generation fell from 140 to 62 tok/s between 840 and 84,039 prompt tokens. Start a new session for each task.</p></li>
     <li><span class="chip">Quality</span><p><strong>Quantizations aren't interchangeable.</strong> Recursive's 4-bit builds are trained for quantization; their NVFP4 build lands within 0.7 points of 16-bit. Community GGUFs are converted separately. If tool calls misfire on llama.cpp, compare a 6-bit file before blaming the model.</p></li>
     <li><span class="chip">Safety</span><p><strong>Pi doesn't ask before running commands.</strong> Worktrees, a clean shell and an approval extension keep mistakes contained.</p></li>
+    <li><span class="chip">Tools</span><p><strong>Trailing newlines can go missing.</strong> In one run Flint sent Pi's <code>write</code> tool <code>"42"</code> instead of <code>"42\n"</code> six times before falling back to <code>printf</code>. Check files and exact-text edits that should end in a newline.</p></li>
+    <li><span class="chip">Scripts</span><p><strong><code>pi -p</code> can wait on an open stdin.</strong> It sat for more than 10 minutes without contacting the model until stdin came from <code>/dev/null</code>. Redirect it in scripts and CI.</p></li>
+    <li><span class="chip">Launcher</span><p><strong><code>ollama launch pi</code> adds a web-search extension</strong> that sends queries through Ollama's cloud service. Start Pi with <code>pi</code>, and run <code>task pi:config</code> after any launcher run.</p></li>
     <li><span class="chip">Privacy</span><p><strong>The free hosted Flint options aren't private.</strong> Pi labels Radius “free, trains on data”, and OpenCode's free tier doesn't state its data terms. Keep work code on the local path.</p></li>
   </ul>
 </section>
