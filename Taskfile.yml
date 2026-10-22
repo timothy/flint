@@ -1,12 +1,14 @@
 # Local Flint stack: Ollama serves Recursive's Flint model, Pi drives it.
-# `task` installs the tools, configures and starts Ollama, and downloads the
-# model weights. The weights live in ~/.ollama/models, never in this repo.
+# `task` installs the tools, configures and starts Ollama, downloads the model
+# weights and points Pi at them. The weights live in ~/.ollama/models, never in
+# this repo.
 version: '3'
 
 vars:
   MODEL: flint:40b-a2b-qat-int4
   OLLAMA_URL: http://127.0.0.1:11434
   CONTEXT_LENGTH: '131072'
+  MAX_TOKENS: '32768'
   NUM_PARALLEL: '1'
   KEEP_ALIVE: 30m
 
@@ -16,9 +18,10 @@ tasks:
       - task: build
 
   build:
-    desc: Build the local stack (currently the same as deps)
+    desc: Install tools, start Ollama, download Flint and configure Pi
     cmds:
       - task: deps
+      - task: pi:config
 
   deps:
     desc: Download the large dependencies (Ollama app, Pi, ~22 GB of Flint weights)
@@ -81,3 +84,37 @@ tasks:
       - ollama show {{.MODEL}} >/dev/null 2>&1
     cmds:
       - ./scripts/pull-model.sh {{.MODEL}}
+
+  pi:config:
+    desc: Point Pi at Flint with the planned limits and no web-search extension
+    preconditions:
+      - sh: command -v jq
+        msg: jq is required (macOS 15 and later include it)
+    status:
+      - jq -e '.providers.ollama.models[] | select(.id == "{{.MODEL}}" and .contextWindow == {{.CONTEXT_LENGTH}} and .maxTokens == {{.MAX_TOKENS}})' "$HOME/.pi/agent/models.json" >/dev/null
+      - jq -e '.defaultProvider == "ollama" and .defaultModel == "{{.MODEL}}" and ((.packages // []) | index("npm:@ollama/pi-web-search") | not)' "$HOME/.pi/agent/settings.json" >/dev/null
+    cmds:
+      # `ollama launch pi --config` needs an interactive terminal, so let the
+      # launcher write Pi's config while it runs a harmless Pi command instead.
+      - ollama launch pi --model {{.MODEL}} --yes -- --list-models </dev/null
+      # The launcher also adds a web-search extension that calls Ollama's cloud
+      # service. Remove it so the agent's traffic stays on loopback.
+      - |
+        if jq -e '(.packages // []) | index("npm:@ollama/pi-web-search")' "$HOME/.pi/agent/settings.json" >/dev/null; then
+          pi remove npm:@ollama/pi-web-search </dev/null
+        fi
+      - |
+        f="$HOME/.pi/agent/models.json"
+        jq '(.providers.ollama.models[] | select(.id == "{{.MODEL}}")) |= . + {contextWindow: {{.CONTEXT_LENGTH}}, maxTokens: {{.MAX_TOKENS}}, compat: {maxTokensField: "max_tokens"}}' "$f" > "$f.tmp"
+        mv "$f.tmp" "$f"
+        chmod 600 "$f"
+
+  smoke:
+    desc: Run Recursive's tool-cycle check with Pi in a throwaway folder
+    cmds:
+      - ./scripts/smoke-test.sh {{.CLI_ARGS}}
+
+  bench:
+    desc: Measure prompt and generation speed (sizes via `task bench -- --sizes 1000,32000`)
+    cmds:
+      - python3 scripts/bench.py --model {{.MODEL}} --url {{.OLLAMA_URL}} {{.CLI_ARGS}}
