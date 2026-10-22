@@ -23,6 +23,16 @@ tasks:
       - task: deps
       - task: pi:config
 
+  run:
+    desc: Install anything missing, start Ollama with Flint's settings, then open Pi in the current folder
+    # Pi is a full-screen terminal app, and it opens in the folder `task` was
+    # run from, for example `task -d ~/apps/Flint run` from another repo.
+    interactive: true
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+      - task: build
+      - pi {{.CLI_ARGS}}
+
   deps:
     desc: Download the large dependencies (Ollama app, Pi, ~22 GB of Flint weights)
     cmds:
@@ -32,14 +42,14 @@ tasks:
       - task: model
 
   tools:
-    desc: Install the Ollama app and the Pi coding agent if they are missing
+    desc: Install the Ollama app, Node.js, jq and the Pi coding agent if they are missing
     preconditions:
       - sh: command -v brew
         msg: Homebrew is required (https://brew.sh)
-      - sh: command -v npm
-        msg: Node.js 22.19+ with npm is required for Pi
     cmds:
       - task: tools:ollama
+      - task: tools:node
+      - task: tools:jq
       - task: tools:pi
 
   tools:ollama:
@@ -50,8 +60,26 @@ tasks:
     cmds:
       - brew install --cask ollama-app
 
+  tools:node:
+    internal: true
+    status:
+      - command -v npm
+    cmds:
+      - brew install node
+
+  tools:jq:
+    internal: true
+    status:
+      - command -v jq
+    cmds:
+      - brew install jq
+
   tools:pi:
     internal: true
+    preconditions:
+      - sh: |
+          node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 19) ? 0 : 1)'
+        msg: Pi needs Node.js 22.19 or later; `node --version` shows the one on your PATH
     status:
       - command -v pi
     cmds:
@@ -67,14 +95,30 @@ tasks:
       - launchctl setenv OLLAMA_CONTEXT_LENGTH {{.CONTEXT_LENGTH}}
       - launchctl setenv OLLAMA_NUM_PARALLEL {{.NUM_PARALLEL}}
       - launchctl setenv OLLAMA_KEEP_ALIVE {{.KEEP_ALIVE}}
-      - cmd: curl -fsS --max-time 2 -o /dev/null {{.OLLAMA_URL}}/api/version && echo "Ollama is already running; quit and reopen it to apply these settings." || true
-        silent: true
 
   ollama:start:
-    desc: Start the Ollama app and wait for its API on 127.0.0.1
+    desc: Start Ollama with Flint's settings (restarting it if it runs with others) and wait for its API
     status:
       - curl -fsS --max-time 2 -o /dev/null {{.OLLAMA_URL}}/api/version
+      # The server keeps the environment it started with, which `ps -E` shows.
+      - |
+        env=$(ps -E -ww -o command= -p "$(pgrep -f 'ollama serve' | head -n 1)" | tr ' ' '\n')
+        for setting in OLLAMA_CONTEXT_LENGTH={{.CONTEXT_LENGTH}} OLLAMA_NUM_PARALLEL={{.NUM_PARALLEL}} OLLAMA_KEEP_ALIVE={{.KEEP_ALIVE}}; do
+          printf '%s\n' "$env" | grep -qx "$setting" || exit 1
+        done
     cmds:
+      # Ollama cancels a `quit` Apple Event, so send its app SIGTERM instead.
+      - cmd: |
+          curl -fs --max-time 2 -o /dev/null {{.OLLAMA_URL}}/api/version || exit 0
+          echo "Restarting Ollama to apply Flint's settings"
+          pkill -x Ollama || true
+          for i in $(seq 30); do
+            sleep 1
+            curl -fs --max-time 1 -o /dev/null {{.OLLAMA_URL}}/api/version || exit 0
+          done
+          echo "Ollama is still answering on {{.OLLAMA_URL}} after 30 seconds; quit it and run task again" >&2
+          exit 1
+        silent: true
       - open -a Ollama
       - curl -fsS --retry 60 --retry-delay 1 --retry-connrefused --retry-max-time 90 -o /dev/null {{.OLLAMA_URL}}/api/version
 

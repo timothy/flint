@@ -22,8 +22,25 @@ Ollama 0.40.8 added Flint on October 21, 2026, and serves Recursive's quantizati
 
 - Apple Silicon Mac with at least 48 GB of unified memory
 - About 25 GB of free disk for the model weights
-- Homebrew, Node.js 22.19+ with npm, `jq` (included in macOS 15 and later), and [go-task](https://taskfile.dev)
-  (`brew install go-task`)
+- [Homebrew](https://brew.sh) and [go-task](https://taskfile.dev) (`brew install go-task`). Node.js and `jq` are
+  installed with Homebrew if they're missing. Pi needs Node.js 22.19 or later, and the build stops if an older one is
+  on your `PATH`.
+
+## Run
+
+```bash
+task run
+```
+
+`task run` installs anything that's missing, makes sure Ollama is running with Flint's settings, then opens Pi in
+the folder you ran `task` from. To code in another repo, point `task` at this one:
+
+```bash
+cd ~/apps/your-repo
+task -d ~/apps/Flint run
+```
+
+Arguments after `--` go to Pi, for example `task run -- --continue`.
 
 ## Build
 
@@ -31,13 +48,14 @@ Ollama 0.40.8 added Flint on October 21, 2026, and serves Recursive's quantizati
 task
 ```
 
-`task` runs `task build`:
+`task` runs `task build`, the same checks `task run` does before it opens Pi:
 
-1. **Tools.** Installs the Ollama app (`brew install --cask ollama-app`) and Pi (`@earendil-works/pi-coding-agent`)
-   if they're missing.
+1. **Tools.** Installs the Ollama app (`brew install --cask ollama-app`), Node.js, `jq` and Pi
+   (`@earendil-works/pi-coding-agent`) if they're missing.
 2. **Ollama settings.** Sets a 131,072-token context, one request at a time and a 30-minute keep-alive for this login
    session.
-3. **Start.** Starts Ollama and waits for its API on `127.0.0.1:11434`.
+3. **Start.** Starts Ollama and waits for its API on `127.0.0.1:11434`. If Ollama is already running with other
+   settings, for example after it started at login, it's restarted, and any loaded model is unloaded.
 4. **Model.** Downloads the Flint weights (about 22 GB) with `scripts/pull-model.sh`, which resumes and retries
    interrupted downloads.
 5. **Pi.** Makes Flint Pi's default model with a 131,072-token window and a 32,768-token output budget, and removes
@@ -46,28 +64,23 @@ task
 Steps 1 to 4 are `task deps`, the task that downloads the large dependencies. Each step checks whether it's already
 done, so running `task` again is quick.
 
-Then check the setup and start coding:
-
-```bash
-task smoke
-cd ~/apps/your-repo
-pi
-```
+To check the setup, run `task smoke`.
 
 | Task | What it does |
 | --- | --- |
+| `task run` | Install anything missing, start Ollama with Flint's settings and open Pi in the current folder |
 | `task deps` | Download the large dependencies: the Ollama app, Pi and the Flint weights |
 | `task pi:config` | Point Pi at Flint with the planned limits and no web-search extension |
 | `task smoke` | Run Recursive's tool-cycle check in a throwaway folder |
 | `task bench` | Measure prompt and generation speed, for example `task bench -- --sizes 1000,32000` |
 | `task ollama:config` | Set Ollama's context, parallelism and keep-alive for this login session |
-| `task ollama:start` | Start Ollama and wait for its API |
+| `task ollama:start` | Start Ollama, restarting it if it runs with other settings, and wait for its API |
 | `task model` | Download only the Flint weights |
 
-`launchctl` settings don't survive a reboot. After restarting the Mac, run `task ollama:config`, then quit and reopen
-Ollama.
+`launchctl` settings don't survive a reboot, so Ollama can come back up without them. `task run` and `task` set them
+again and restart Ollama.
 
-Start Pi with `pi`, not `ollama launch pi`. The launcher rewrites Pi's config and installs the web-search extension
+Start Pi with `task run` or `pi`, not `ollama launch pi`. The launcher rewrites Pi's config and installs the web-search extension
 again; if you use it, run `task pi:config` afterwards.
 
 ## Measured on this Mac
