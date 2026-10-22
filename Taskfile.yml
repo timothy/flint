@@ -1,0 +1,83 @@
+# Local Flint stack: Ollama serves Recursive's Flint model, Pi drives it.
+# `task` installs the tools, configures and starts Ollama, and downloads the
+# model weights. The weights live in ~/.ollama/models, never in this repo.
+version: '3'
+
+vars:
+  MODEL: flint:40b-a2b-qat-int4
+  OLLAMA_URL: http://127.0.0.1:11434
+  CONTEXT_LENGTH: '131072'
+  NUM_PARALLEL: '1'
+  KEEP_ALIVE: 30m
+
+tasks:
+  default:
+    cmds:
+      - task: build
+
+  build:
+    desc: Build the local stack (currently the same as deps)
+    cmds:
+      - task: deps
+
+  deps:
+    desc: Download the large dependencies (Ollama app, Pi, ~22 GB of Flint weights)
+    cmds:
+      - task: tools
+      - task: ollama:config
+      - task: ollama:start
+      - task: model
+
+  tools:
+    desc: Install the Ollama app and the Pi coding agent if they are missing
+    preconditions:
+      - sh: command -v brew
+        msg: Homebrew is required (https://brew.sh)
+      - sh: command -v npm
+        msg: Node.js 22.19+ with npm is required for Pi
+    cmds:
+      - task: tools:ollama
+      - task: tools:pi
+
+  tools:ollama:
+    internal: true
+    status:
+      - test -d /Applications/Ollama.app
+      - command -v ollama
+    cmds:
+      - brew install --cask ollama-app
+
+  tools:pi:
+    internal: true
+    status:
+      - command -v pi
+    cmds:
+      - npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+
+  ollama:config:
+    desc: Set Ollama's server options for this login session (cleared at reboot)
+    status:
+      - test "$(launchctl getenv OLLAMA_CONTEXT_LENGTH)" = "{{.CONTEXT_LENGTH}}"
+      - test "$(launchctl getenv OLLAMA_NUM_PARALLEL)" = "{{.NUM_PARALLEL}}"
+      - test "$(launchctl getenv OLLAMA_KEEP_ALIVE)" = "{{.KEEP_ALIVE}}"
+    cmds:
+      - launchctl setenv OLLAMA_CONTEXT_LENGTH {{.CONTEXT_LENGTH}}
+      - launchctl setenv OLLAMA_NUM_PARALLEL {{.NUM_PARALLEL}}
+      - launchctl setenv OLLAMA_KEEP_ALIVE {{.KEEP_ALIVE}}
+      - cmd: curl -fsS --max-time 2 -o /dev/null {{.OLLAMA_URL}}/api/version && echo "Ollama is already running; quit and reopen it to apply these settings." || true
+        silent: true
+
+  ollama:start:
+    desc: Start the Ollama app and wait for its API on 127.0.0.1
+    status:
+      - curl -fsS --max-time 2 -o /dev/null {{.OLLAMA_URL}}/api/version
+    cmds:
+      - open -a Ollama
+      - curl -fsS --retry 60 --retry-delay 1 --retry-connrefused --retry-max-time 90 -o /dev/null {{.OLLAMA_URL}}/api/version
+
+  model:
+    desc: Download the Flint weights (~22 GB; resumes partial downloads and retries)
+    status:
+      - ollama show {{.MODEL}} >/dev/null 2>&1
+    cmds:
+      - ./scripts/pull-model.sh {{.MODEL}}

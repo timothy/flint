@@ -1,0 +1,30 @@
+# Model weights and other large downloads. `task deps` fetches Flint into
+# Ollama's store (~/.ollama/models), outside this repo; these patterns keep
+# weights that are downloaded or copied here out of git.
+models/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+*.npz
+*.partial
+
+# Task runner and tool caches
+.task/
+.cache/
+.venv/
+__pycache__/
+node_modules/
+
+# Logs and run output
+*.log
+logs/
+
+# Local settings and secrets
+.env
+.env.*
+
+# macOS
+.DS_Store

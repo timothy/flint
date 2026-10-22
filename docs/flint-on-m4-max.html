@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body { margin: 0; }</style>
+<title>Flint on M4 Max</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: spec-sheet column. 1160px frame; prose held near 68ch; figures, tables and the decision ledger use the full frame. */
+:root {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --ink: #1A1E23;
+  --muted: #59626C;
+  --line: #DADEE3;
+  --line-strong: #B4BCC5;
+  --code-bg: #ECEEF1;
+  --spark: #A64B00;
+  --spark-mid: #D9975C;
+  --spark-soft: #F4E2D0;
+  --steel: #2F5D8A;
+  --warn: #B3261E;
+  --warn-soft: #F8E0DD;
+  --seg-reused: #E1E5EA;
+  --seg-prefill: #A3B3C4;
+  --seg-decode: #2B3440;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181C;
+    --surface: #1C2026;
+    --ink: #E5E8EC;
+    --muted: #9AA4AF;
+    --line: #2E353D;
+    --line-strong: #4A535E;
+    --code-bg: #22272E;
+    --spark: #F0A04B;
+    --spark-mid: #B87634;
+    --spark-soft: #4A3219;
+    --steel: #8FB6DE;
+    --warn: #F28B82;
+    --warn-soft: #3E2221;
+    --seg-reused: #2A3037;
+    --seg-prefill: #50637A;
+    --seg-decode: #D9DEE4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181C;
+  --surface: #1C2026;
+  --ink: #E5E8EC;
+  --muted: #9AA4AF;
+  --line: #2E353D;
+  --line-strong: #4A535E;
+  --code-bg: #22272E;
+  --spark: #F0A04B;
+  --spark-mid: #B87634;
+  --spark-soft: #4A3219;
+  --steel: #8FB6DE;
+  --warn: #F28B82;
+  --warn-soft: #3E2221;
+  --seg-reused: #2A3037;
+  --seg-prefill: #50637A;
+  --seg-decode: #D9DEE4;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  max-width: 1160px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 40px);
+  padding-block: 44px 80px;
+}
+h1, h2, h3, p, ul, ol, figure { margin: 0; }
+h1, h2 { font-family: var(--font-display); font-stretch: 116%; text-wrap: balance; }
+h1 {
+  font-weight: 800;
+  font-size: clamp(2.3rem, 1.4rem + 3.6vw, 3.8rem);
+  line-height: 1.0;
+  letter-spacing: -0.015em;
+}
+h2 {
+  font-weight: 700;
+  font-size: clamp(1.35rem, 1.1rem + 0.9vw, 1.75rem);
+  line-height: 1.15;
+}
+h3 { font-size: 1.02rem; font-weight: 600; line-height: 1.35; text-wrap: balance; }
+a { color: var(--steel); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--spark); outline-offset: 2px; border-radius: 3px; }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--code-bg);
+  padding: 0.08em 0.35em;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+strong { font-weight: 600; }
+.prose { max-width: 68ch; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Masthead */
+.masthead { display: grid; gap: 18px; padding-bottom: 28px; }
+.lede { font-size: 1.12rem; line-height: 1.55; max-width: 64ch; }
+.facts {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.facts li::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 1px;
+  background: var(--spark);
+  vertical-align: 0.1em;
+}
+.toc { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 0.92rem; padding-top: 4px; }
+.toc a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+.toc a:hover { border-bottom-color: var(--spark); }
+
+/* Decision ledger */
+.ledger { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.ledger-row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 6px 28px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--line);
+}
+.ledger-row:first-child { border-top: 0; }
+.ledger .k {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 0.25rem;
+}
+.ledger .v {
+  font-family: var(--font-display);
+  font-stretch: 106%;
+  font-weight: 650;
+  font-size: 1.1rem;
+  line-height: 1.35;
+}
+.ledger .v code { font-weight: 500; font-size: 0.8em; }
+.ledger .why { color: var(--muted); font-size: 0.96rem; }
+
+/* Sections */
+.block {
+  display: grid;
+  gap: 24px;
+  margin-top: 56px;
+  padding-top: 44px;
+  border-top: 1px solid var(--line);
+}
+.block-head { display: grid; gap: 10px; }
+.block-head p { font-size: 1.02rem; }
+
+/* Figures */
+.fig {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: clamp(12px, 2vw, 22px);
+  display: grid;
+  gap: 14px;
+}
+.fig-scroll { overflow-x: auto; }
+.diagram { display: block; width: 100%; height: auto; }
+.fig-scroll .d-wide { min-width: 900px; }
+.fig-scroll .d-mem { min-width: 820px; }
+figcaption { font-size: 0.93rem; color: var(--muted); max-width: 84ch; }
+
+.diagram text { font-family: var(--font-body); fill: var(--ink); }
+.diagram .t-title { font-size: 15px; font-weight: 600; }
+.diagram .t-opt { font-size: 14px; font-weight: 600; }
+.diagram .t-sub { font-size: 12px; fill: var(--muted); }
+.diagram .t-label { font-size: 12px; fill: var(--muted); }
+.diagram .t-mono { font-family: var(--font-mono); font-size: 11px; fill: var(--ink); }
+.diagram .t-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; fill: var(--muted); }
+.diagram .t-seg { font-size: 12px; font-weight: 500; fill: var(--ink); }
+.diagram .t-inv { fill: var(--bg); }
+.diagram .t-muted { fill: var(--muted); }
+.diagram .t-warn { fill: var(--warn); }
+.diagram .t-spark { fill: var(--spark); }
+.diagram .t-steel { fill: var(--steel); }
+.diagram .t-on-spark { fill: var(--surface); }
+.diagram .zone { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1.25; stroke-dasharray: 6 6; }
+.diagram .box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.25; }
+.diagram .box-spark { stroke: var(--spark); stroke-width: 2; }
+.diagram .box-steel { stroke: var(--steel); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.diagram .opt { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1; }
+.diagram .opt-spark { stroke: var(--spark); stroke-width: 2; }
+.diagram .wire { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.diagram .wire-spark { stroke: var(--spark); stroke-width: 2; }
+.diagram .wire-steel { stroke: var(--steel); stroke-dasharray: 7 6; }
+.diagram .wire-warn { fill: none; stroke: var(--warn); stroke-width: 2; }
+.diagram .wire-dash { fill: none; stroke: var(--ink); stroke-width: 1.25; stroke-dasharray: 4 4; }
+.diagram .ah { fill: var(--ink); }
+.diagram .ah-spark { fill: var(--spark); }
+.diagram .ah-steel { fill: var(--steel); }
+.diagram .seg-reused { fill: var(--seg-reused); }
+.diagram .seg-prefill { fill: var(--seg-prefill); }
+.diagram .seg-decode { fill: var(--seg-decode); }
+.diagram .seg-waste { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.25; stroke-dasharray: 5 4; }
+.diagram .m-weights { fill: var(--spark); }
+.diagram .m-kv { fill: var(--spark-mid); }
+.diagram .m-buf { fill: var(--spark-soft); }
+.diagram .m-os { fill: var(--seg-reused); }
+.diagram .m-free { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 4 3; }
+.diagram .tick, .diagram .axis, .diagram .bracket { fill: none; stroke: var(--muted); stroke-width: 1; }
+
+/* Notes under figures */
+.notes {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 24px 34px;
+}
+.notes > * { min-width: 0; display: grid; gap: 6px; align-content: start; }
+.notes p { font-size: 0.97rem; }
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.table-wrap.narrow { max-width: 640px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.94rem; }
+.narrow table { min-width: 460px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
+thead th {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+tbody th { font-weight: 600; white-space: nowrap; }
+td.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.planned th, tr.planned td { background: var(--spark-soft); }
+.role { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.role-primary { color: var(--spark); font-weight: 500; }
+.table-note { font-size: 0.9rem; color: var(--muted); max-width: 84ch; }
+
+/* Code */
+.code { border: 1px solid var(--line); border-radius: 12px; background: var(--code-bg); overflow: hidden; min-width: 0; }
+.code-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.code pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.code pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+.copy {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.copy:hover { border-color: var(--spark); }
+
+/* Build plan */
+.plan {
+  list-style: none;
+  padding: 0;
+  counter-reset: step;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.plan > li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  column-gap: 18px;
+  padding: 22px 24px;
+  border-top: 1px solid var(--line);
+}
+.plan > li:first-child { border-top: 0; }
+.plan > li::before {
+  content: counter(step);
+  font-family: var(--font-display);
+  font-stretch: 116%;
+  font-weight: 800;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--spark);
+}
+.step { display: grid; gap: 12px; min-width: 0; }
+.step > p { max-width: 72ch; }
+.done { font-size: 0.93rem; color: var(--muted); }
+.done strong { color: var(--ink); }
+details.alt { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+details.alt > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 16px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+details.alt > summary::-webkit-details-marker { display: none; }
+details.alt > summary::after { content: "+"; font-family: var(--font-mono); color: var(--muted); }
+details.alt[open] > summary::after { content: "\2212"; }
+details.alt[open] > summary { border-bottom: 1px solid var(--line); }
+.alt-body { display: grid; gap: 12px; padding: 16px; }
+.alt-body > p { max-width: 72ch; font-size: 0.97rem; }
+
+/* Risks */
+.risks { list-style: none; padding: 0; display: grid; gap: 18px; }
+.risks li { display: grid; grid-template-columns: 6.4rem minmax(0, 1fr); gap: 4px 18px; align-items: baseline; }
+.risks p { max-width: 76ch; }
+.chip {
+  justify-self: start;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 1px 9px;
+  white-space: nowrap;
+}
+
+/* Sources */
+.sources { padding-left: 1.1rem; display: grid; gap: 6px; font-size: 0.95rem; columns: 2 320px; column-gap: 40px; }
+.sources li { break-inside: avoid; }
+.foot { margin-top: 40px; font-size: 0.88rem; color: var(--muted); max-width: 84ch; }
+
+@media (max-width: 760px) {
+  .ledger-row { grid-template-columns: 1fr; padding: 18px; }
+  .plan > li { grid-template-columns: 1fr; row-gap: 10px; padding: 20px 18px; }
+  .risks li { grid-template-columns: 1fr; }
+  .sources { display: block; }
+  .sources li + li { margin-top: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <p class="eyebrow">Design proposal · October 22, 2026</p>
+  <h1>Flint on M4 Max</h1>
+  <p class="lede">Recursive released Flint on October 21, 2026: an open-weights coding model built to run on a laptop. This page proposes how to run it on your MacBook Pro: which engine serves it, which harness drives it, how the 64&nbsp;GB gets spent, and what to check before you rely on it.</p>
+  <ul class="facts" aria-label="Flint at a glance">
+    <li>39.8B total · 2.5B active per token</li>
+    <li>256 experts, 6 + 1 shared per token</li>
+    <li>262,144-token context</li>
+    <li>always reasons</li>
+    <li>Apache 2.0</li>
+  </ul>
+  <nav class="toc" aria-label="Sections">
+    <a href="#architecture">Architecture</a>
+    <a href="#turn-cost">Turn cost</a>
+    <a href="#harness">Harness</a>
+    <a href="#memory">Memory</a>
+    <a href="#configuration">Configuration</a>
+    <a href="#build-plan">Build plan</a>
+    <a href="#risks">Risks</a>
+    <a href="#sources">Sources</a>
+  </nav>
+</header>
+
+<section class="ledger" aria-label="The proposal in four decisions">
+  <div class="ledger-row">
+    <p class="k">Engine</p>
+    <p class="v">Ollama, <code>flint:40b-a2b-qat-int4</code></p>
+    <p class="why">Recursive's faster <code>rec</code> engine doesn't list the M4 Max as supported. One <code>rec doctor</code> run tells you; if it passes, use rec instead.</p>
+  </div>
+  <div class="ledger-row">
+    <p class="k">Harness</p>
+    <p class="v">Pi</p>
+    <p class="why">Recursive's recommended local harness, with the smallest prompt to re-read each session. OpenCode is the backup. Claude Code stays on Claude models.</p>
+  </div>
+  <div class="ledger-row">
+    <p class="k">Budget</p>
+    <p class="v">131,072-token window · 32,768 output · one agent</p>
+    <p class="why">About 26 GiB of your 64 GB, leaving plenty for your editor, browser and other apps.</p>
+  </div>
+  <div class="ledger-row">
+    <p class="k">Boundary</p>
+    <p class="v">Loopback only, 127.0.0.1</p>
+    <p class="why">Nothing leaves the Mac unless you hand a task to Claude Code. Skip the free hosted Flint tiers for work code.</p>
+  </div>
+</section>
+
+<section id="architecture" class="block">
+  <div class="block-head">
+    <h2>How the pieces connect</h2>
+    <p class="prose">You steer Pi. Pi sends the conversation to a model server on this Mac and runs the resulting tool calls in your files. The server runs Flint on the GPU, straight out of unified memory.</p>
+  </div>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="diagram d-wide" viewBox="0 0 1100 600" role="img" aria-label="Architecture. You prompt the Pi harness. Pi sends the whole conversation over loopback to a local model server: rec on port 11500 if rec doctor passes, otherwise Ollama on port 11434, the planned path. The server streams reasoning and tool calls back. Pi runs the tools in a git worktree and returns the results with the next request. The server runs Flint from unified memory on the M4 Max GPU. Only an optional hand-off of hard tasks to Claude Code leaves the Mac.">
+        <defs>
+          <marker id="ah-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="ah-spark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path class="ah-spark" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="ah-steel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path class="ah-steel" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+
+        <rect class="zone" x="12" y="12" width="844" height="576" rx="18"/>
+        <text class="t-eyebrow" x="32" y="566">THIS MACBOOK PRO · 127.0.0.1 ONLY</text>
+
+        <rect class="box" x="300" y="40" width="208" height="68" rx="10"/>
+        <text class="t-title" x="404" y="69" text-anchor="middle">You</text>
+        <text class="t-sub" x="404" y="91" text-anchor="middle">terminal + editor</text>
+
+        <rect class="box" x="28" y="228" width="188" height="156" rx="10"/>
+        <text class="t-title" x="122" y="258" text-anchor="middle">Workspace</text>
+        <text class="t-sub" x="122" y="288" text-anchor="middle">git worktree per task</text>
+        <text class="t-sub" x="122" y="309" text-anchor="middle">read · write · edit · bash</text>
+        <text class="t-sub" x="122" y="330" text-anchor="middle">rg · git · tests</text>
+        <text class="t-sub" x="122" y="351" text-anchor="middle">no prod secrets in env</text>
+
+        <rect class="box box-spark" x="300" y="228" width="208" height="156" rx="10"/>
+        <text class="t-title" x="404" y="258" text-anchor="middle">Pi harness</text>
+        <text class="t-sub" x="404" y="288" text-anchor="middle">AGENTS.md project rules</text>
+        <text class="t-sub" x="404" y="309" text-anchor="middle">skills · extensions · MCP</text>
+        <text class="t-sub" x="404" y="330" text-anchor="middle">session tree · compaction</text>
+        <text class="t-sub" x="404" y="351" text-anchor="middle">one agent at a time</text>
+
+        <rect class="box" x="660" y="192" width="180" height="244" rx="10"/>
+        <text class="t-title" x="750" y="220" text-anchor="middle">Model server</text>
+        <text class="t-mono" x="750" y="239" text-anchor="middle">/v1/chat/completions</text>
+        <rect class="opt" x="674" y="252" width="152" height="68" rx="8"/>
+        <text class="t-opt" x="750" y="275" text-anchor="middle">rec</text>
+        <text class="t-mono" x="750" y="293" text-anchor="middle">:11500 · model flint</text>
+        <text class="t-label" x="750" y="311" text-anchor="middle">if rec doctor passes</text>
+        <text class="t-label" x="750" y="338" text-anchor="middle">or</text>
+        <rect class="opt opt-spark" x="674" y="348" width="152" height="74" rx="8"/>
+        <text class="t-opt" x="750" y="371" text-anchor="middle">Ollama</text>
+        <text class="t-mono" x="750" y="389" text-anchor="middle">:11434 · qat-int4 tag</text>
+        <text class="t-label t-spark" x="750" y="408" text-anchor="middle">planned on M4 Max</text>
+
+        <rect class="box" x="660" y="472" width="180" height="100" rx="10"/>
+        <text class="t-title" x="750" y="498" text-anchor="middle">Unified memory</text>
+        <text class="t-sub" x="750" y="520" text-anchor="middle">4-bit weights ≈ 21 GiB</text>
+        <text class="t-sub" x="750" y="540" text-anchor="middle">KV ≈ 3.5 GiB at 128k</text>
+        <text class="t-sub" x="750" y="560" text-anchor="middle">40-core GPU · Metal</text>
+
+        <rect class="box box-steel" x="876" y="40" width="212" height="112" rx="10"/>
+        <text class="t-title" x="982" y="70" text-anchor="middle">Claude Code</text>
+        <text class="t-sub" x="982" y="93" text-anchor="middle">Claude models via</text>
+        <text class="t-sub" x="982" y="113" text-anchor="middle">Anthropic API (cloud)</text>
+        <text class="t-label t-steel" x="982" y="136" text-anchor="middle">only when you hand off</text>
+
+        <line class="wire" x1="404" y1="108" x2="404" y2="226" marker-end="url(#ah-ink)"/>
+        <text class="t-label" x="416" y="172">prompt · steer</text>
+
+        <path class="wire" d="M122 228 V74 H298" marker-end="url(#ah-ink)"/>
+        <text class="t-label" x="210" y="66" text-anchor="middle">diffs to review</text>
+
+        <line class="wire" x1="300" y1="288" x2="218" y2="288" marker-end="url(#ah-ink)"/>
+        <text class="t-label" x="258" y="279" text-anchor="middle">tool calls</text>
+        <line class="wire" x1="216" y1="326" x2="298" y2="326" marker-end="url(#ah-ink)"/>
+        <text class="t-label" x="258" y="345" text-anchor="middle">results</text>
+
+        <line class="wire wire-spark" x1="508" y1="288" x2="658" y2="288" marker-end="url(#ah-spark)"/>
+        <text class="t-label t-spark" x="584" y="279" text-anchor="middle">whole conversation</text>
+        <line class="wire" x1="660" y1="326" x2="510" y2="326" marker-end="url(#ah-ink)"/>
+        <text class="t-label" x="584" y="345" text-anchor="middle">streamed tokens</text>
+        <text class="t-label" x="584" y="362" text-anchor="middle">reasoning · tool calls</text>
+
+        <line class="wire" x1="750" y1="436" x2="750" y2="470" marker-end="url(#ah-ink)"/>
+        <text class="t-label" x="760" y="457">weights + KV</text>
+
+        <line class="wire wire-steel" x1="508" y1="74" x2="874" y2="74" marker-end="url(#ah-steel)"/>
+        <text class="t-label t-steel" x="691" y="64" text-anchor="middle">optional hand-off of hard tasks</text>
+      </svg>
+    </div>
+    <figcaption>Pi runs the agent loop. It sends the whole conversation to a model server on this Mac, gets reasoning and tool calls back as a stream, runs those tools in your worktree, and sends the results with the next request. Amber marks the planned path. Only the dashed hand-off to Claude leaves the machine.</figcaption>
+  </figure>
+  <div class="notes">
+    <div>
+      <h3>Engines swap without touching the loop</h3>
+      <p>rec and Ollama both expose OpenAI-style Chat Completions on localhost. Moving between them changes three values in Pi: base URL, model ID and key.</p>
+    </div>
+    <div>
+      <h3>One agent at a time</h3>
+      <p>rec serves one generation at a time and answers overlapping requests with HTTP 429. Ollama queues them instead. Plan on serial work, not parallel subagents.</p>
+    </div>
+    <div>
+      <h3>Reasoning goes back in</h3>
+      <p>Flint reasons on every turn. Leave effort settings unset, and make sure each assistant message goes back to the server with its <code>reasoning_content</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="turn-cost" class="block">
+  <div class="block-head">
+    <h2>Where a turn's time goes</h2>
+    <p class="prose">Each turn has two costs: reading the new part of the prompt (prefill) and writing the reply (decode). The KV cache decides how much of the prompt has to be read again.</p>
+  </div>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="diagram d-wide" viewBox="0 0 1100 310" role="img" aria-label="Three requests compared. Turn 1 of a new session: the system prompt and tool schemas, AGENTS.md and your prompt are all read, then the reply is generated. Turn 6 with an append-only history: turns 1 to 5 are reused from the KV cache, so only the new tool result is read before generating. Turn 6 after early history changed: only the opening is reused; turns 1 to 5 are read again before the new tool result.">
+        <text class="t-title" x="12" y="52">Turn 1</text>
+        <text class="t-label" x="12" y="70">new session</text>
+        <rect class="seg-prefill" x="220" y="36" width="130" height="40" rx="4"/>
+        <text class="t-seg" x="285" y="61" text-anchor="middle">system + tools</text>
+        <rect class="seg-prefill" x="352" y="36" width="98" height="40" rx="4"/>
+        <text class="t-seg" x="401" y="61" text-anchor="middle">AGENTS.md</text>
+        <rect class="seg-prefill" x="452" y="36" width="98" height="40" rx="4"/>
+        <text class="t-seg" x="501" y="61" text-anchor="middle">your prompt</text>
+        <rect class="seg-decode" x="552" y="36" width="150" height="40" rx="4"/>
+        <text class="t-seg t-inv" x="627" y="61" text-anchor="middle">reasoning + call</text>
+
+        <text class="t-title" x="12" y="140">Turn 6</text>
+        <text class="t-label" x="12" y="158">history only appended</text>
+        <rect class="seg-reused" x="220" y="124" width="618" height="40" rx="4"/>
+        <text class="t-seg t-muted" x="529" y="149" text-anchor="middle">turns 1–5 · reused from KV cache</text>
+        <rect class="seg-prefill" x="840" y="124" width="98" height="40" rx="4"/>
+        <text class="t-seg" x="889" y="149" text-anchor="middle">tool result</text>
+        <rect class="seg-decode" x="940" y="124" width="140" height="40" rx="4"/>
+        <text class="t-seg t-inv" x="1010" y="149" text-anchor="middle">reasoning + call</text>
+
+        <text class="t-title" x="12" y="240">Turn 6</text>
+        <text class="t-label" x="12" y="258">early history changed</text>
+        <rect class="seg-reused" x="220" y="224" width="330" height="40" rx="4"/>
+        <text class="t-seg t-muted" x="385" y="249" text-anchor="middle">system · AGENTS.md · prompt</text>
+        <rect class="seg-waste" x="552" y="224" width="286" height="40" rx="4"/>
+        <text class="t-seg t-warn" x="695" y="249" text-anchor="middle">turns 1–5 · read again</text>
+        <rect class="seg-prefill" x="840" y="224" width="98" height="40" rx="4"/>
+        <text class="t-seg" x="889" y="249" text-anchor="middle">tool result</text>
+        <rect class="seg-decode" x="940" y="224" width="140" height="40" rx="4"/>
+        <text class="t-seg t-inv" x="1010" y="249" text-anchor="middle">reasoning + call</text>
+        <line class="wire-warn" x1="551" y1="200" x2="551" y2="272"/>
+        <text class="t-label t-warn" x="559" y="210">history changed here</text>
+
+        <rect class="seg-reused" x="220" y="288" width="14" height="14" rx="3"/>
+        <text class="t-label" x="242" y="300">reused: no work</text>
+        <rect class="seg-prefill" x="388" y="288" width="14" height="14" rx="3"/>
+        <text class="t-label" x="410" y="300">prefill: reads the prompt</text>
+        <rect class="seg-decode" x="606" y="288" width="14" height="14" rx="3"/>
+        <text class="t-label" x="628" y="300">decode: writes tokens</text>
+        <rect class="seg-waste" x="806" y="288" width="14" height="14" rx="3"/>
+        <text class="t-label" x="828" y="300">read again</text>
+      </svg>
+    </div>
+    <figcaption>Every request resends the whole conversation, and the server skips the longest prefix already in its KV cache. With an append-only history, turn 6 only has to read the new tool result. If something early changes (a timestamp in the system prompt, an edited message, reasoning dropped by a chat template, a compaction), everything after that point is read again. Widths are illustrative.</figcaption>
+  </figure>
+  <ul class="notes">
+    <li>
+      <h3>Lean harness prompts pay off</h3>
+      <p>The system prompt and tool schemas are read in full at the start of every session and after every compaction. Pi keeps both small, which is why Recursive recommends it. Informal reports put it at about 1.5× faster workflows than OpenCode.</p>
+    </li>
+    <li>
+      <h3>Keep history append-only</h3>
+      <p>Send <code>reasoning_content</code> back, keep timestamps and git status out of the system prompt, and don't edit earlier messages. Flint's sliding-window layers make mid-history changes costly: an engine that can only rewind to saved checkpoints may read the whole session again.</p>
+    </li>
+    <li>
+      <h3>One session per task</h3>
+      <p>Generation slows as the context grows, because every new token attends over more cache. Compaction rewrites history, which costs a full re-read. A new session for each task keeps both costs small.</p>
+    </li>
+  </ul>
+</section>
+
+<section id="harness" class="block">
+  <div class="block-head">
+    <h2>Which harness</h2>
+    <p class="prose"><strong>Use Pi.</strong> Recursive tests Flint with it and names it the recommended harness for local coding. rec and Ollama can both launch it already configured, and its small prompt means fewer tokens to read each session on a laptop GPU.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Harness</th><th scope="col">How it reaches Flint</th><th scope="col">Strengths</th><th scope="col">Watch for</th><th scope="col">Role</th></tr>
+      </thead>
+      <tbody>
+        <tr class="planned">
+          <th scope="row">Pi</th>
+          <td><code>rec launch pi</code>, <code>ollama launch pi</code>, or <code>models.json</code></td>
+          <td>Small prompt. AGENTS.md, skills, TypeScript extensions, MCP, branching sessions, automatic compaction.</td>
+          <td>Runs commands without asking. No built-in plan mode or subagents; add them as extensions or packages.</td>
+          <td><span class="role role-primary">Primary</span></td>
+        </tr>
+        <tr>
+          <th scope="row">OpenCode</th>
+          <td><code>rec launch opencode</code> or <code>ollama launch opencode</code></td>
+          <td>Plan and build agents, subagents, permission prompts.</td>
+          <td>Heavier per turn: about 1.5× slower workflows than Pi in informal reports. Recursive suggests a 65,536-token output budget with compaction on.</td>
+          <td><span class="role">Backup</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Claude Code</th>
+          <td><code>ollama launch claude --model flint:40b-a2b-qat-int4</code></td>
+          <td>Your existing setup, hooks and skills. Strongest on Claude models.</td>
+          <td>Outside Recursive's tested set. rec has no Anthropic-style endpoint, so Flint reaches it only through Ollama. Its large prompt is read in full every session, and Flint's reasoning has to survive Ollama's Anthropic translation.</td>
+          <td><span class="role">Hand-offs, on Claude</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Cline</th>
+          <td>OpenAI-compatible provider in VS Code</td>
+          <td>Edits and commands with approval, inside the editor.</td>
+          <td>Set up by hand; it isn't one of the rec or Ollama launchers.</td>
+          <td><span class="role">Optional</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="notes">
+    <div>
+      <h3>Guardrails for Pi</h3>
+      <p>Pi runs commands without asking. Give each task its own git worktree, review the diff before you merge, start Pi from a shell with no production credentials, and add a permission-gate extension or a container for code you don't trust.</p>
+    </div>
+    <div>
+      <h3>When to hand off</h3>
+      <p>If Flint misses the same task twice, give it to Claude Code on a Claude model. Keep project rules in <code>AGENTS.md</code> and add a one-line <code>CLAUDE.md</code> containing <code>@AGENTS.md</code>, so both harnesses read the same rules.</p>
+    </div>
+  </div>
+</section>
+
+<section id="memory" class="block">
+  <div class="block-head">
+    <h2>What this Mac brings</h2>
+    <p class="prose">Read from this machine on October 22, 2026. The M4 Max has twice the GPU cores and memory bandwidth of the M4 Pro that Recursive benchmarks, so any engine that runs well here should match M4 Pro speeds or beat them. Measure before you count on it.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Spec</th><th scope="col">This Mac</th><th scope="col">What it means for Flint</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Chip</th><td>Apple M4 Max, 16-core CPU (12 performance + 4 efficiency)</td><td>Not on rec's published support list, which names M4 Pro, M5 Pro and M5 Max.</td></tr>
+        <tr><th scope="row">GPU</th><td>40 cores, Metal 4</td><td>Twice the M4 Pro's 20 cores. Prompt processing scales with GPU compute.</td></tr>
+        <tr><th scope="row">Memory</th><td class="num">64 GB unified, about 546 GB/s</td><td>Above rec's 48 GB minimum. Generation scales with bandwidth, and this is twice the M4 Pro's 273 GB/s.</td></tr>
+        <tr><th scope="row">Disk</th><td class="num">110 GB free of 926 GB</td><td>Room for one engine's copy of the weights (23–30 GB) at a time.</td></tr>
+        <tr><th scope="row">macOS</th><td>26.7.1</td><td class="muted">No version-specific notes in Recursive's docs.</td></tr>
+        <tr><th scope="row">Toolchain</th><td>Homebrew 7.0, Node 24.18, Python 3.12 with uv, Xcode, Docker with Colima, Claude Code</td><td>Pi needs Node 22.19+ and Python 3; both are present.</td></tr>
+        <tr><th scope="row">Not installed</th><td>rec, Ollama, llama.cpp, Pi, OpenCode</td><td class="muted">Covered in the build plan.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figure class="fig">
+    <div class="fig-scroll">
+      <svg class="diagram d-mem" viewBox="0 0 1000 178" role="img" aria-label="Memory budget at a 128k window, to scale on a 0 to 64 GiB axis. Flint weights about 21.4 GiB, KV cache about 3.5 GiB and runtime buffers about 1.5 GiB, for a Flint total of about 26.4 GiB. macOS and apps take about 14 GiB in a typical developer load, leaving about 23.6 GiB free. The default GPU cap sits near 48 GiB, well above what Flint needs.">
+        <text class="t-label" x="715" y="24" text-anchor="middle">default GPU cap ≈ 48</text>
+        <text class="t-label" x="372" y="42" text-anchor="end">KV cache 3.5</text>
+        <line class="tick" x1="365" y1="46" x2="365" y2="54"/>
+        <text class="t-label" x="396" y="42">buffers 1.5</text>
+        <line class="tick" x1="400" y1="46" x2="400" y2="54"/>
+
+        <rect class="m-weights" x="40" y="54" width="301" height="40"/>
+        <rect class="m-kv" x="341" y="54" width="49" height="40"/>
+        <rect class="m-buf" x="390" y="54" width="21" height="40"/>
+        <rect class="m-os" x="411" y="54" width="197" height="40"/>
+        <rect class="m-free" x="608" y="54" width="332" height="40"/>
+        <text class="t-seg t-on-spark" x="190" y="79" text-anchor="middle">Flint weights 21.4</text>
+        <text class="t-seg" x="509" y="79" text-anchor="middle">macOS + apps ≈ 14</text>
+        <text class="t-seg t-muted" x="800" y="79" text-anchor="middle">free ≈ 23.6</text>
+        <line class="wire-dash" x1="715" y1="32" x2="715" y2="104"/>
+
+        <path class="bracket" d="M40 102 V110 H411 V102"/>
+        <text class="t-label" x="225" y="128" text-anchor="middle">Flint at a 128k window ≈ 26.4</text>
+
+        <line class="axis" x1="40" y1="150" x2="940" y2="150"/>
+        <line class="tick" x1="40" y1="150" x2="40" y2="156"/>
+        <line class="tick" x1="265" y1="150" x2="265" y2="156"/>
+        <line class="tick" x1="490" y1="150" x2="490" y2="156"/>
+        <line class="tick" x1="715" y1="150" x2="715" y2="156"/>
+        <line class="tick" x1="940" y1="150" x2="940" y2="156"/>
+        <text class="t-label" x="40" y="171" text-anchor="middle">0</text>
+        <text class="t-label" x="265" y="171" text-anchor="middle">16</text>
+        <text class="t-label" x="490" y="171" text-anchor="middle">32</text>
+        <text class="t-label" x="715" y="171" text-anchor="middle">48</text>
+        <text class="t-label" x="940" y="171" text-anchor="end">64 GiB</text>
+      </svg>
+    </div>
+    <figcaption>The planned path at a 131,072-token window, drawn to scale in GiB. Flint needs about 26 GiB. The macOS and apps share is a typical developer load, not a measurement, and the buffer figure is an estimate. The GPU limit on this Mac is the system default (<code>iogpu.wired_limit_mb</code> is 0), which allows about 48 GiB, so no override is needed.</figcaption>
+  </figure>
+  <div class="table-wrap narrow">
+    <table>
+      <thead>
+        <tr><th scope="col">Context window</th><th scope="col">KV cache</th><th scope="col">Flint total</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">32,768</td><td class="num">0.9 GiB</td><td class="num">≈ 23.8 GiB</td></tr>
+        <tr><td class="num">65,536</td><td class="num">1.75 GiB</td><td class="num">≈ 24.7 GiB</td></tr>
+        <tr class="planned"><td class="num">131,072 · planned</td><td class="num">3.5 GiB</td><td class="num">≈ 26.4 GiB</td></tr>
+        <tr><td class="num">262,144 · maximum</td><td class="num">7.0 GiB</td><td class="num">≈ 29.9 GiB</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">16-bit cache. Only Flint's 14 full-attention layers grow with context: 4 KV heads × 128 dims × 2 (keys and values) × 2 bytes × 14 layers is 28 KiB per token. The 35 sliding-window layers keep 513 tokens each and add almost nothing.</p>
+  <div class="notes">
+    <div>
+      <h3>Disk</h3>
+      <p>Each engine keeps its own copy of the weights: about 30 GB for rec with its runtime, 23 GB for Ollama, 25.1 GB for the llama.cpp Q4 file. With 110 GB free, keep one copy at a time and skip the 80 GB BF16 checkpoint.</p>
+    </div>
+    <div>
+      <h3>Power</h3>
+      <p>Plug in for long agent sessions; sustained GPU load can throttle a laptop. Use High Power mode in Battery settings if this Mac offers it.</p>
+    </div>
+  </div>
+</section>
+
+<section id="configuration" class="block">
+  <div class="block-head">
+    <h2>The configuration</h2>
+    <p class="prose">Values for the planned path. With rec, keep the launcher's bundled settings instead; it derives its limits from the running server.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Setting</th><th scope="col">Value</th><th scope="col">Why</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Engine</th><td>Ollama, <code>flint:40b-a2b-qat-int4</code> (23 GB)</td><td>The quantization-trained int4 build Recursive's docs point to. One command connects Pi.</td></tr>
+        <tr><th scope="row">Context window</th><td class="num">131,072 tokens</td><td>About 26 GiB in total. Recursive says to use the limit you validate, not the 262,144 maximum.</td></tr>
+        <tr><th scope="row">Output budget</th><td class="num">32,768 tokens</td><td>Recursive's minimum for hard problems. Reasoning and the answer share it.</td></tr>
+        <tr><th scope="row">Concurrent requests</th><td class="num">1</td><td>One agent gets the whole window. rec serves one generation at a time anyway.</td></tr>
+        <tr><th scope="row">Sampling</th><td>temperature 1.0 · top-p 0.95 · top-k 20</td><td>Recursive's values. Engines apply them when a request leaves them out.</td></tr>
+        <tr><th scope="row">Reasoning controls</th><td>leave unset</td><td>Flint always reasons. Recursive advises against effort or thinking switches unless the engine documents them.</td></tr>
+        <tr><th scope="row">Listen address</th><td><code>127.0.0.1</code></td><td>The default for rec and Ollama. Keep the port off shared networks.</td></tr>
+        <tr><th scope="row">KV cache precision</th><td>16-bit, the default</td><td>3.5 GiB at 128k. Consider 8-bit only beyond 128k.</td></tr>
+        <tr><th scope="row">GPU memory limit</th><td>system default</td><td>About 48 GiB available; Flint needs about 26.</td></tr>
+        <tr><th scope="row">Model keep-alive</th><td class="num">30 minutes</td><td>Ollama unloads after 5 idle minutes by default, and reloading 23 GB mid-task wastes time.</td></tr>
+        <tr><th scope="row">Pi model limits</th><td class="num">131,072 window · 32,768 output</td><td>Match the server exactly. If Pi believes the window is larger, the engine may trim the start of the conversation.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="build-plan" class="block">
+  <div class="block-head">
+    <h2>Build plan</h2>
+    <p class="prose">Six steps, each with a check that proves it worked before you move on.</p>
+  </div>
+  <ol class="plan">
+    <li>
+      <div class="step">
+        <h3>Find out whether rec runs here</h3>
+        <p>rec is Recursive's own engine and the fastest option, but its docs don't list the M4 Max. The installer answers the question: after downloading, it runs <code>rec doctor</code> and stops if this Mac isn't supported. It also adds <code>~/.local/bin</code> to your PATH in <code>~/.zshrc</code>.</p>
+        <div class="code">
+          <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c1">Copy</button></div>
+          <pre id="c1"><code>curl -fsSL https://raw.githubusercontent.com/recursive-oss/rec/main/install.sh | bash</code></pre>
+        </div>
+        <p>If it passes, launch from your repo and skip to step 4. rec downloads Flint, starts its server on port 11500 and keeps it running after Pi exits; stop it with <code>rec stop</code>.</p>
+        <div class="code">
+          <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c2">Copy</button></div>
+          <pre id="c2"><code>cd ~/apps/your-repo
+rec launch pi</code></pre>
+        </div>
+        <p class="done"><strong>Done when</strong> <code>rec doctor</code> has passed or refused. If it refused, delete <code>~/.local/share/rec</code> if the folder was left behind, and go to step 2.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step">
+        <h3>Serve Flint with Ollama</h3>
+        <p>Install the Ollama app from ollama.com/download; you need a version that includes <code>ollama launch</code>. Set the server options, then quit and reopen Ollama so it reads them. <code>launchctl</code> values last until you restart the Mac.</p>
+        <div class="code">
+          <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c3">Copy</button></div>
+          <pre id="c3"><code>launchctl setenv OLLAMA_CONTEXT_LENGTH 131072
+launchctl setenv OLLAMA_NUM_PARALLEL 1
+launchctl setenv OLLAMA_KEEP_ALIVE 30m
+ollama pull flint:40b-a2b-qat-int4</code></pre>
+        </div>
+        <p class="done"><strong>Done when</strong> <code>curl -s http://127.0.0.1:11434/v1/models</code> lists <code>flint:40b-a2b-qat-int4</code>.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step">
+        <h3>Launch Pi on Flint</h3>
+        <div class="code">
+          <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c4">Copy</button></div>
+          <pre id="c4"><code>npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+cd ~/apps/your-repo
+ollama launch pi</code></pre>
+        </div>
+        <p>Pick <code>flint:40b-a2b-qat-int4</code> when asked; Ollama writes Pi's provider settings for you. In a second terminal, <code>ollama ps</code> should show the model on 100% GPU with a 131072 context.</p>
+        <p class="done"><strong>Done when</strong> Pi answers “What is 19 + 23?” with 42.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step">
+        <h3>Run Recursive's tool-cycle check</h3>
+        <p>In a throwaway folder, create <code>smoke-input.txt</code> containing <code>19 23</code>. Ask Pi to read it with its file tool, add the numbers, write <code>42</code> and a newline to <code>result.txt</code>, check the file with a shell command, and report back. Then check it yourself:</p>
+        <div class="code">
+          <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c5">Copy</button></div>
+          <pre id="c5"><code>python3 -c 'from pathlib import Path; assert Path("result.txt").read_bytes() == b"42\n"'</code></pre>
+        </div>
+        <p class="done"><strong>Done when</strong> you saw a read-tool call, Pi's own check passed, and the command above exits without an error. Note the elapsed time and any retries.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step">
+        <h3>Add guardrails and shared rules</h3>
+        <p>Write project rules in <code>AGENTS.md</code> and add a <code>CLAUDE.md</code> containing <code>@AGENTS.md</code>. Run each Flint task in its own worktree, from a shell with no production credentials.</p>
+        <div class="code">
+          <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c6">Copy</button></div>
+          <pre id="c6"><code>git worktree add ../your-repo-flint -b flint/first-task
+cd ../your-repo-flint
+ollama launch pi</code></pre>
+        </div>
+        <p class="done"><strong>Done when</strong> one real task has gone from worktree to a reviewed, merged diff.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step">
+        <h3>Measure, then tune</h3>
+        <p>Time three real tasks at the 128k window. For a quick probe, <code>ollama run flint:40b-a2b-qat-int4 --verbose</code> prints prompt and generation speed. If long sessions slow down, start new sessions sooner before you shrink the window.</p>
+        <details class="alt">
+          <summary>Optional: compare llama.cpp</summary>
+          <div class="alt-body">
+            <p>Flint support landed in upstream llama.cpp on October 21, 2026 (PR #30928). Make sure your build is at least that new; if Homebrew's isn't, use a release from github.com/ggml-org/llama.cpp.</p>
+            <div class="code">
+              <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c7">Copy</button></div>
+              <pre id="c7"><code>brew install llama.cpp
+llama-server --version</code></pre>
+            </div>
+            <div class="code">
+              <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c8">Copy</button></div>
+              <pre id="c8"><code>llama-server -hf unsloth/flint-GGUF:UD-Q4_K_XL \
+  --alias flint-local --host 127.0.0.1 --port 8080 \
+  --ctx-size 131072 --parallel 1 --n-gpu-layers 99 \
+  --jinja --temp 1.0 --top-p 0.95 --top-k 20 --metrics</code></pre>
+            </div>
+            <p>UD-Q4_K_XL is a 25.1 GB download. UD-Q6_K_XL (36.3 GB) also fits if you want to compare tool-call quality. Merge this provider into Pi's config, keeping any providers already there:</p>
+            <div class="code">
+              <div class="code-head"><span>~/.pi/agent/models.json</span><button class="copy" type="button" data-copy="c9">Copy</button></div>
+              <pre id="c9"><code>{
+  "providers": {
+    "local-flint": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "${LOCAL_API_KEY}",
+      "models": [{
+        "id": "flint-local",
+        "name": "Flint (local)",
+        "reasoning": false,
+        "input": ["text"],
+        "contextWindow": 131072,
+        "maxTokens": 32768,
+        "compat": { "maxTokensField": "max_tokens" }
+      }]
+    }
+  }
+}</code></pre>
+            </div>
+            <div class="code">
+              <div class="code-head"><span>zsh</span><button class="copy" type="button" data-copy="c10">Copy</button></div>
+              <pre id="c10"><code>LOCAL_API_KEY=local pi --provider local-flint --model flint-local</code></pre>
+            </div>
+            <p><code>"reasoning": false</code> only hides Pi's thinking controls; Flint still reasons. If the server log says it is forcing full prompt re-processing, the history changed somewhere the cache can't rewind to.</p>
+          </div>
+        </details>
+        <p class="done"><strong>Done when</strong> you've picked the engine, quantization and window from your own numbers.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section id="risks" class="block">
+  <div class="block-head">
+    <h2>Risks and open questions</h2>
+  </div>
+  <ul class="risks">
+    <li><span class="chip">Engine</span><p><strong>rec may refuse this Mac.</strong> The rec page lists M4 Pro, M5 Pro and M5 Max, while the Mac recipe and troubleshooting pages say “M4 or M5 Pro or Max”. One <code>rec doctor</code> run settles it.</p></li>
+    <li><span class="chip">Maturity</span><p><strong>Everything here is days old.</strong> Flint shipped October 21, 2026, and llama.cpp support merged the same day with a stopgap its author says costs 10–30% in speed. Once a setup works, pin the versions.</p></li>
+    <li><span class="chip">Speed</span><p><strong>No M4 Max numbers exist yet.</strong> Recursive reports rec above 125 tok/s averaged over a 128k-token session on an M4 Pro, and 1.4–2.6× faster than llama.cpp across 1K–252K prompts. Your own measurements are the source of truth.</p></li>
+    <li><span class="chip">Quality</span><p><strong>Quantizations aren't interchangeable.</strong> Recursive's 4-bit builds are trained for quantization; their NVFP4 build lands within 0.7 points of 16-bit. Community GGUFs are converted separately. If tool calls misfire on llama.cpp, compare a 6-bit file before blaming the model.</p></li>
+    <li><span class="chip">Safety</span><p><strong>Pi doesn't ask before running commands.</strong> Worktrees, a clean shell and an approval extension keep mistakes contained.</p></li>
+    <li><span class="chip">Privacy</span><p><strong>The free hosted Flint options aren't private.</strong> Pi labels Radius “free, trains on data”, and OpenCode's free tier doesn't state its data terms. Keep work code on the local path.</p></li>
+  </ul>
+</section>
+
+<section id="sources" class="block">
+  <div class="block-head">
+    <h2>Sources</h2>
+  </div>
+  <ul class="sources">
+    <li><a href="https://recursive.com/updates/introducing-recursive-flint">Recursive: Introducing Flint</a></li>
+    <li><a href="https://huggingface.co/RecursiveSI/flint">Flint model card (Hugging Face)</a></li>
+    <li><a href="https://docs.recursive.com/getting-started">Flint docs: Getting started</a></li>
+    <li><a href="https://docs.recursive.com/edge/rec">Flint docs: rec</a></li>
+    <li><a href="https://docs.recursive.com/edge/ollama">Flint docs: Ollama</a></li>
+    <li><a href="https://docs.recursive.com/guides/pi">Flint docs: Pi</a></li>
+    <li><a href="https://docs.recursive.com/guides/coding-agents">Flint docs: Coding agents (OpenCode)</a></li>
+    <li><a href="https://docs.recursive.com/guides/coding-tools">Flint docs: Coding tools and tool-cycle check</a></li>
+    <li><a href="https://docs.recursive.com/guides/generation-settings">Flint docs: Generation settings</a></li>
+    <li><a href="https://docs.recursive.com/local/mac">Flint docs: Mac recipe (llama.cpp)</a></li>
+    <li><a href="https://docs.recursive.com/resources/troubleshooting">Flint docs: Troubleshooting</a></li>
+    <li><a href="https://github.com/recursive-oss/rec">rec repository</a></li>
+    <li><a href="https://github.com/ggml-org/llama.cpp/pull/30928">llama.cpp PR #30928: Add Flint model</a></li>
+    <li><a href="https://huggingface.co/unsloth/flint-GGUF">unsloth/flint-GGUF</a></li>
+    <li><a href="https://ollama.com/library/flint">Ollama library: flint</a></li>
+    <li><a href="https://pi.dev">Pi coding agent</a></li>
+  </ul>
+  <p class="foot">Hardware details come from <code>system_profiler</code> and <code>sysctl</code> on this Mac. Memory bandwidth is Apple's figure for this M4 Max configuration. Speed figures are Recursive's own. Buffer and macOS memory figures are estimates.</p>
+</section>
+
+</div>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var pre = document.getElementById(btn.getAttribute("data-copy"));
+    if (!pre) return;
+    var text = pre.textContent;
+    var reset = function (label, ms) {
+      btn.textContent = label;
+      setTimeout(function () { btn.textContent = "Copy"; }, ms);
+    };
+    var selectText = function () {
+      var range = document.createRange();
+      range.selectNodeContents(pre);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      reset("Press ⌘C", 2400);
+    };
+    try {
+      navigator.clipboard.writeText(text).then(function () { reset("Copied", 1600); }, selectText);
+    } catch (e) {
+      selectText();
+    }
+  });
+});
+</script>
+</body>
+</html>
